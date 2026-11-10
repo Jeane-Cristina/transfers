@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Transfers.Api/Transfers.Api.csproj" />
+    <Project Path="src/Transfers.Application/Transfers.Application.csproj" />
+    <Project Path="src/Transfers.Domain/Transfers.Domain.csproj" />
+    <Project Path="src/Transfers.Infrastructure/Transfers.Infrastructure.csproj" />
+    <Project Path="src/Transfers.Worker/Transfers.Worker.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Transfers.IntegrationTests/Transfers.IntegrationTests.csproj" />
+    <Project Path="tests/Transfers.UnitTests/Transfers.UnitTests.csproj" />
+  </Folder>
+</Solution>
