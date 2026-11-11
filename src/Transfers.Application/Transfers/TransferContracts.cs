@@ -21,3 +21,5 @@ public sealed record TransferResponse(
         t.Id, t.SourceAccountId, t.DestinationAccountId, t.Amount, t.Type, t.Status,
         t.FailureReason, t.CreatedAt, t.ScheduledFor, t.ProcessedAt);
 }
+
+public sealed record TransferExecution(TransferResponse Transfer, bool Replayed);

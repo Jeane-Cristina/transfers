@@ -10,23 +10,31 @@ public sealed class TransferExecutor(
     IAccountRepository accounts,
     ITransferRepository transfers,
     IUnitOfWork unitOfWork,
+    IdempotencyGuard idempotency,
     TransferPeriodResolver periods,
     TimeProvider clock)
 {
-    public Task<TransferResponse> ExecuteImmediateAsync(CreateTransferCommand command, CancellationToken ct)
+    public Task<TransferExecution> ExecuteImmediateAsync(CreateTransferCommand command, CancellationToken ct)
         => unitOfWork.ExecuteInTransactionAsync(async token =>
         {
             var (source, destination) = await LockAccountsAsync(
                 command.SourceAccountId, command.DestinationAccountId, token);
 
+            var requestHash = RequestHasher.Hash(
+                "immediate", command.SourceAccountId, command.DestinationAccountId, command.Amount);
+
+            var replay = await idempotency.FindReplayAsync(command.IdempotencyKey, requestHash, token);
+            if (replay is not null)
+                return replay;
+
             var now = clock.GetUtcNow();
             var transfer = Transfer.CreateImmediate(
-                source.Id, destination.Id, command.Amount, now, command.IdempotencyKey);
+                source.Id, destination.Id, command.Amount, now, command.IdempotencyKey, requestHash);
 
             await ProcessAsync(transfer, source, destination, now, token);
             transfers.Add(transfer);
 
-            return TransferResponse.From(transfer);
+            return new TransferExecution(TransferResponse.From(transfer), Replayed: false);
         }, ct);
 
     public Task ExecuteScheduledAsync(Guid transferId, CancellationToken ct)

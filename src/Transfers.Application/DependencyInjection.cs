@@ -1,6 +1,7 @@
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
+using Transfers.Application.Common;
 using Transfers.Application.Transfers;
 using Transfers.Domain.Rules;
 
@@ -21,6 +22,7 @@ public static class DependencyInjection
                 TimeOnly.Parse(options.NightEnd));
         });
 
+        services.AddScoped<IdempotencyGuard>();
         services.AddScoped<TransferExecutor>();
         return services;
     }

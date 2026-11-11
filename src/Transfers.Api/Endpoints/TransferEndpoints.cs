@@ -18,7 +18,8 @@ public static class TransferEndpoints
             .Produces<TransferResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status400BadRequest)
-            .ProducesProblem(StatusCodes.Status404NotFound);
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
 
         group.MapGet("/{id:guid}", GetAsync)
             .Produces<TransferResponse>()
@@ -31,13 +32,17 @@ public static class TransferEndpoints
         CreateTransferRequest request,
         [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
         TransferExecutor executor,
+        HttpContext http,
         CancellationToken ct)
     {
-        var result = await executor.ExecuteImmediateAsync(
+        var execution = await executor.ExecuteImmediateAsync(
             new CreateTransferCommand(request.SourceAccountId, request.DestinationAccountId, request.Amount, idempotencyKey),
             ct);
 
-        return ToHttpResult(result);
+        if (execution.Replayed)
+            http.Response.Headers["Idempotent-Replayed"] = "true";
+
+        return ToHttpResult(execution.Transfer);
     }
 
     private static async Task<IResult> GetAsync(Guid id, ITransferRepository transfers, CancellationToken ct)

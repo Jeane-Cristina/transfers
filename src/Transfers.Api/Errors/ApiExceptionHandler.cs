@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.EntityFrameworkCore;
 using Npgsql;
 using Transfers.Application.Common;
 using Transfers.Domain.Common;
@@ -17,6 +18,8 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) :
             DomainException { Code: "transfer.not_cancellable" } e =>
                 (StatusCodes.Status409Conflict, e.Code, "Estado não permite a operação"),
             DomainException e => (StatusCodes.Status400BadRequest, e.Code, "Requisição inválida"),
+            DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
+                (StatusCodes.Status409Conflict, "idempotency.conflict", "Idempotency-Key já utilizada"),
             PostgresException { SqlState: PostgresErrorCodes.LockNotAvailable } =>
                 (StatusCodes.Status503ServiceUnavailable, "account.busy", "Conta ocupada, tente novamente"),
             _ => (0, "", "")
