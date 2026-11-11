@@ -1,4 +1,6 @@
-﻿services:
+x-db-connection: &db-connection "Host=postgres;Port=5432;Database=transfers;Username=transfers;Password=transfers"
+
+services:
   postgres:
     image: postgres:17
     environment:
@@ -15,12 +17,53 @@
 
   rabbitmq:
     image: rabbitmq:4-management
+    environment:
+      RABBITMQ_DEFAULT_USER: transfers
+      RABBITMQ_DEFAULT_PASS: transfers
     ports: ["5672:5672", "15672:15672"]
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
       timeout: 5s
       retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: src/Transfers.Api/Dockerfile
+    environment:
+      ConnectionStrings__Postgres: *db-connection
+      Database__ApplyMigrationsOnStartup: "true"
+      Jwt__Key: ${JWT_KEY:-chave-local-do-docker-compose-com-mais-de-32-bytes}
+    ports: ["5080:8080"]
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  worker:
+    build:
+      context: .
+      dockerfile: src/Transfers.Worker/Dockerfile
+    environment:
+      ConnectionStrings__Postgres: *db-connection
+      RabbitMq__Host: rabbitmq
+      RabbitMq__User: transfers
+      RabbitMq__Password: transfers
+    deploy:
+      replicas: 2
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      api:
+        condition: service_started
+
+  web:
+    build: ./web
+    ports: ["8080:80"]
+    depends_on:
+      - api
 
 volumes:
   pgdata:

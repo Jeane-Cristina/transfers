@@ -39,6 +39,7 @@ builder.Services
         };
     });
 builder.Services.AddAuthorization();
+builder.Services.AddHealthChecks().AddDbContextCheck<TransfersDbContext>("database");
 
 builder.Services.AddProblemDetails();
 builder.Services.AddExceptionHandler<ApiExceptionHandler>();
@@ -84,6 +85,8 @@ app.UseSwaggerUI(o =>
     o.SwaggerEndpoint("/openapi/v1.json", "Transfers API v1");
     o.EnablePersistAuthorization();
 });
+
+app.MapHealthChecks("/health").AllowAnonymous();
 
 app.MapAuthEndpoints();
 app.MapAccountEndpoints();
