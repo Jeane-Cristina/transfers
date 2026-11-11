@@ -2,8 +2,10 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Transfers.Application.Abstractions;
 using Transfers.Infrastructure.Persistence;
 using Transfers.Infrastructure.Persistence.Interceptors;
+using Transfers.Infrastructure.Persistence.Repositories;
 
 namespace Transfers.Infrastructure;
 
@@ -18,6 +20,10 @@ public static class DependencyInjection
             .UseNpgsql(configuration.GetConnectionString("Postgres"))
             .UseSnakeCaseNamingConvention()
             .AddInterceptors(sp.GetRequiredService<DomainEventsToOutboxInterceptor>()));
+
+        services.AddScoped<IAccountRepository, AccountRepository>();
+        services.AddScoped<ITransferRepository, TransferRepository>();
+        services.AddScoped<IUnitOfWork, EfUnitOfWork>();
 
         return services;
     }

@@ -1,0 +1,42 @@
+using Microsoft.AspNetCore.Diagnostics;
+using Microsoft.AspNetCore.Mvc;
+using Npgsql;
+using Transfers.Application.Common;
+using Transfers.Domain.Common;
+
+namespace Transfers.Api.Errors;
+
+public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) : IExceptionHandler
+{
+    public async ValueTask<bool> TryHandleAsync(HttpContext http, Exception exception, CancellationToken ct)
+    {
+        var (status, code, title) = exception switch
+        {
+            NotFoundException e => (StatusCodes.Status404NotFound, e.Code, "Recurso não encontrado"),
+            ConflictException e => (StatusCodes.Status409Conflict, e.Code, "Conflito"),
+            DomainException { Code: "transfer.not_cancellable" } e =>
+                (StatusCodes.Status409Conflict, e.Code, "Estado não permite a operação"),
+            DomainException e => (StatusCodes.Status400BadRequest, e.Code, "Requisição inválida"),
+            PostgresException { SqlState: PostgresErrorCodes.LockNotAvailable } =>
+                (StatusCodes.Status503ServiceUnavailable, "account.busy", "Conta ocupada, tente novamente"),
+            _ => (0, "", "")
+        };
+
+        if (status == 0)
+            return false;
+
+        http.Response.StatusCode = status;
+        return await problemDetails.TryWriteAsync(new ProblemDetailsContext
+        {
+            HttpContext = http,
+            Exception = exception,
+            ProblemDetails = new ProblemDetails
+            {
+                Status = status,
+                Title = title,
+                Detail = exception.Message,
+                Extensions = { ["code"] = code }
+            }
+        });
+    }
+}

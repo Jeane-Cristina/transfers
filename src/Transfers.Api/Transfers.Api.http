@@ -1,6 +1,18 @@
-@Transfers.Api_HostAddress = http://localhost:5211
+@api = http://localhost:5211
+@ana = COLE_O_ID_DA_ANA
+@bruno = COLE_O_ID_DO_BRUNO
 
-GET {{Transfers.Api_HostAddress}}/weatherforecast/
-Accept: application/json
+GET {{api}}/api/accounts
+
+###
+
+POST {{api}}/api/transfers
+Content-Type: application/json
+
+{
+  "sourceAccountId": "{{ana}}",
+  "destinationAccountId": "{{bruno}}",
+  "amount": 1000
+}
 
 ###
