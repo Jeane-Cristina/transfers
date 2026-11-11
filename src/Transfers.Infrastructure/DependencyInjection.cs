@@ -3,6 +3,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Transfers.Application.Abstractions;
+using Transfers.Infrastructure.Messaging;
+using Transfers.Infrastructure.Outbox;
 using Transfers.Infrastructure.Persistence;
 using Transfers.Infrastructure.Persistence.Interceptors;
 using Transfers.Infrastructure.Persistence.Repositories;
@@ -24,7 +26,16 @@ public static class DependencyInjection
         services.AddScoped<IAccountRepository, AccountRepository>();
         services.AddScoped<ITransferRepository, TransferRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
+        services.AddScoped<ICommandOutbox, EfCommandOutbox>();
 
+        return services;
+    }
+
+    public static IServiceCollection AddMessaging(this IServiceCollection services, IConfiguration configuration)
+    {
+        services.Configure<RabbitMqOptions>(configuration.GetSection("RabbitMq"));
+        services.AddSingleton<RabbitMqConnection>();
+        services.AddSingleton<RabbitMqPublisher>();
         return services;
     }
 }

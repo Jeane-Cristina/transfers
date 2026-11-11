@@ -17,6 +17,8 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) :
             ConflictException e => (StatusCodes.Status409Conflict, e.Code, "Conflito"),
             DomainException { Code: "transfer.not_cancellable" } e =>
                 (StatusCodes.Status409Conflict, e.Code, "Estado não permite a operação"),
+            DomainException { Code: "account.inactive" } e =>
+                (StatusCodes.Status422UnprocessableEntity, e.Code, "Conta bloqueada ou inativa"),
             DomainException e => (StatusCodes.Status400BadRequest, e.Code, "Requisição inválida"),
             DbUpdateException { InnerException: PostgresException { SqlState: PostgresErrorCodes.UniqueViolation } } =>
                 (StatusCodes.Status409Conflict, "idempotency.conflict", "Idempotency-Key já utilizada"),

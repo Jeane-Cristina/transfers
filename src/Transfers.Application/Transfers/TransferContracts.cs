@@ -23,3 +23,9 @@ public sealed record TransferResponse(
 }
 
 public sealed record TransferExecution(TransferResponse Transfer, bool Replayed);
+
+public sealed record ScheduleTransferCommand(
+    Guid SourceAccountId, Guid DestinationAccountId, decimal Amount,
+    DateTimeOffset ScheduledFor, string? IdempotencyKey);
+
+public sealed record ExecuteScheduledTransfer(Guid TransferId);

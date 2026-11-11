@@ -8,6 +8,9 @@ namespace Transfers.Api.Endpoints;
 
 public sealed record CreateTransferRequest(Guid SourceAccountId, Guid DestinationAccountId, decimal Amount);
 
+public sealed record ScheduleTransferRequest(
+    Guid SourceAccountId, Guid DestinationAccountId, decimal Amount, DateTimeOffset ScheduledFor);
+
 public static class TransferEndpoints
 {
     public static IEndpointRouteBuilder MapTransferEndpoints(this IEndpointRouteBuilder app)
@@ -18,6 +21,18 @@ public static class TransferEndpoints
             .Produces<TransferResponse>(StatusCodes.Status201Created)
             .ProducesProblem(StatusCodes.Status422UnprocessableEntity)
             .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict);
+
+        group.MapPost("/scheduled", ScheduleAsync)
+            .Produces<TransferResponse>(StatusCodes.Status201Created)
+            .ProducesProblem(StatusCodes.Status400BadRequest)
+            .ProducesProblem(StatusCodes.Status404NotFound)
+            .ProducesProblem(StatusCodes.Status409Conflict)
+            .ProducesProblem(StatusCodes.Status422UnprocessableEntity);
+
+        group.MapPost("/{id:guid}/cancel", CancelAsync)
+            .Produces<TransferResponse>()
             .ProducesProblem(StatusCodes.Status404NotFound)
             .ProducesProblem(StatusCodes.Status409Conflict);
 
@@ -44,6 +59,26 @@ public static class TransferEndpoints
 
         return ToHttpResult(execution.Transfer);
     }
+
+    private static async Task<IResult> ScheduleAsync(
+        ScheduleTransferRequest request,
+        [FromHeader(Name = "Idempotency-Key")] string? idempotencyKey,
+        ScheduleTransferHandler handler,
+        HttpContext http,
+        CancellationToken ct)
+    {
+        var execution = await handler.HandleAsync(new ScheduleTransferCommand(
+            request.SourceAccountId, request.DestinationAccountId, request.Amount,
+            request.ScheduledFor, idempotencyKey), ct);
+
+        if (execution.Replayed)
+            http.Response.Headers["Idempotent-Replayed"] = "true";
+
+        return Results.Created($"/api/transfers/{execution.Transfer.Id}", execution.Transfer);
+    }
+
+    private static async Task<IResult> CancelAsync(Guid id, CancelTransferHandler handler, CancellationToken ct)
+        => Results.Ok(await handler.HandleAsync(id, ct));
 
     private static async Task<IResult> GetAsync(Guid id, ITransferRepository transfers, CancellationToken ct)
     {

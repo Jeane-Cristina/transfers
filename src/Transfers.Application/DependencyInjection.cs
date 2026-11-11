@@ -24,6 +24,9 @@ public static class DependencyInjection
 
         services.AddScoped<IdempotencyGuard>();
         services.AddScoped<TransferExecutor>();
+        services.AddScoped<ScheduleTransferHandler>();
+        services.AddScoped<CancelTransferHandler>();
+        services.AddScoped<ScheduledTransferDispatcher>();
         return services;
     }
 }
