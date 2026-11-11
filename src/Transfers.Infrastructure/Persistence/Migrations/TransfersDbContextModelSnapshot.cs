@@ -181,6 +181,24 @@ namespace Transfers.Infrastructure.Persistence.Migrations
                         });
                 });
 
+            modelBuilder.Entity("Transfers.Infrastructure.Identity.AccountCredential", b =>
+                {
+                    b.Property<Guid>("AccountId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("account_id");
+
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("password_hash");
+
+                    b.HasKey("AccountId")
+                        .HasName("pk_account_credentials");
+
+                    b.ToTable("account_credentials", (string)null);
+                });
+
             modelBuilder.Entity("Transfers.Infrastructure.Outbox.OutboxMessage", b =>
                 {
                     b.Property<Guid>("Id")
@@ -253,6 +271,16 @@ namespace Transfers.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired()
                         .HasConstraintName("fk_transfers_accounts_source_account_id");
+                });
+
+            modelBuilder.Entity("Transfers.Infrastructure.Identity.AccountCredential", b =>
+                {
+                    b.HasOne("Transfers.Domain.Accounts.Account", null)
+                        .WithOne()
+                        .HasForeignKey("Transfers.Infrastructure.Identity.AccountCredential", "AccountId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_account_credentials_accounts_account_id");
                 });
 #pragma warning restore 612, 618
         }

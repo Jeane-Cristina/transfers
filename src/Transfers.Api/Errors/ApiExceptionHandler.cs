@@ -15,6 +15,7 @@ public sealed class ApiExceptionHandler(IProblemDetailsService problemDetails) :
         {
             NotFoundException e => (StatusCodes.Status404NotFound, e.Code, "Recurso não encontrado"),
             ConflictException e => (StatusCodes.Status409Conflict, e.Code, "Conflito"),
+            ForbiddenException e => (StatusCodes.Status403Forbidden, e.Code, "Acesso negado"),
             DomainException { Code: "transfer.not_cancellable" } e =>
                 (StatusCodes.Status409Conflict, e.Code, "Estado não permite a operação"),
             DomainException { Code: "account.inactive" } e =>

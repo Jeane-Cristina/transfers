@@ -1,8 +1,10 @@
+using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Transfers.Api.Auth;
 using Transfers.Application.Transfers;
 using Transfers.Domain.Accounts;
 using Transfers.Infrastructure.Persistence;
@@ -53,12 +55,42 @@ public abstract class IntegrationTest(ApiFactory factory)
             .SingleAsync();
     }
 
+    protected string TokenFor(Guid accountId)
+    {
+        var tokens = Factory.Services.GetRequiredService<JwtTokenService>();
+        return tokens.Issue(accountId, "Conta de teste").Token;
+    }
+
     protected Task<HttpResponseMessage> TransferAsync(Guid from, Guid to, decimal amount, string? key = null)
-        => PostAsync("/api/transfers", new { sourceAccountId = from, destinationAccountId = to, amount }, key);
+        => SendAsync(HttpMethod.Post, "/api/transfers", from,
+            new { sourceAccountId = from, destinationAccountId = to, amount }, key);
 
     protected Task<HttpResponseMessage> ScheduleAsync(Guid from, Guid to, decimal amount, DateTimeOffset when)
-        => PostAsync("/api/transfers/scheduled",
-            new { sourceAccountId = from, destinationAccountId = to, amount, scheduledFor = when }, key: null);
+        => SendAsync(HttpMethod.Post, "/api/transfers/scheduled", from,
+            new { sourceAccountId = from, destinationAccountId = to, amount, scheduledFor = when });
+
+    protected Task<HttpResponseMessage> CancelAsync(Guid transferId, Guid asAccount)
+        => SendAsync(HttpMethod.Post, $"/api/transfers/{transferId}/cancel", asAccount);
+
+    protected async Task<TransferResponse> GetTransferAsync(Guid transferId, Guid asAccount)
+    {
+        var response = await SendAsync(HttpMethod.Get, $"/api/transfers/{transferId}", asAccount);
+        response.EnsureSuccessStatusCode();
+        return await ReadTransferAsync(response);
+    }
+
+    protected Task<HttpResponseMessage> SendAsync(
+        HttpMethod method, string url, Guid? asAccount, object? body = null, string? key = null)
+    {
+        var request = new HttpRequestMessage(method, url);
+        if (body is not null)
+            request.Content = JsonContent.Create(body);
+        if (asAccount is { } accountId)
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", TokenFor(accountId));
+        if (key is not null)
+            request.Headers.Add("Idempotency-Key", key);
+        return Client.SendAsync(request);
+    }
 
     protected static async Task<string?> FailureReasonAsync(HttpResponseMessage response)
     {
@@ -68,12 +100,4 @@ public abstract class IntegrationTest(ApiFactory factory)
 
     protected static async Task<TransferResponse> ReadTransferAsync(HttpResponseMessage response)
         => (await response.Content.ReadFromJsonAsync<TransferResponse>(Json))!;
-
-    private Task<HttpResponseMessage> PostAsync(string url, object body, string? key)
-    {
-        var request = new HttpRequestMessage(HttpMethod.Post, url) { Content = JsonContent.Create(body) };
-        if (key is not null)
-            request.Headers.Add("Idempotency-Key", key);
-        return Client.SendAsync(request);
-    }
 }

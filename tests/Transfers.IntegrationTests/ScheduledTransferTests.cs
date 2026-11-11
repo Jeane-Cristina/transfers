@@ -1,5 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Transfers.Application.Transfers;
 using Transfers.Domain.Accounts;
@@ -24,8 +23,8 @@ public sealed class ScheduledTransferTests(ApiFactory factory) : IntegrationTest
         Factory.Clock.Advance(TimeSpan.FromMinutes(11));
         await RunScheduledPipelineAsync(scheduled.Id);
 
-        var final = await Client.GetFromJsonAsync<TransferResponse>($"/api/transfers/{scheduled.Id}", Json);
-        Assert.Equal(TransferStatus.Failed, final!.Status);
+        var final = await GetTransferAsync(scheduled.Id, source.Id);
+        Assert.Equal(TransferStatus.Failed, final.Status);
         Assert.Equal(FailureReason.InsufficientFunds, final.FailureReason);
     }
 
@@ -41,8 +40,8 @@ public sealed class ScheduledTransferTests(ApiFactory factory) : IntegrationTest
         Factory.Clock.Advance(TimeSpan.FromMinutes(6));
         await RunScheduledPipelineAsync(scheduled.Id);
 
-        var final = await Client.GetFromJsonAsync<TransferResponse>($"/api/transfers/{scheduled.Id}", Json);
-        Assert.Equal(TransferStatus.Completed, final!.Status);
+        var final = await GetTransferAsync(scheduled.Id, source.Id);
+        Assert.Equal(TransferStatus.Completed, final.Status);
         Assert.Equal(750m, await BalanceAsync(source.Id));
     }
 
@@ -57,8 +56,8 @@ public sealed class ScheduledTransferTests(ApiFactory factory) : IntegrationTest
 
         await RunScheduledPipelineAsync(scheduled.Id);
 
-        var final = await Client.GetFromJsonAsync<TransferResponse>($"/api/transfers/{scheduled.Id}", Json);
-        Assert.Equal(TransferStatus.Scheduled, final!.Status);
+        var final = await GetTransferAsync(scheduled.Id, source.Id);
+        Assert.Equal(TransferStatus.Scheduled, final.Status);
         Assert.Equal(1_000m, await BalanceAsync(source.Id));
     }
 
@@ -70,8 +69,8 @@ public sealed class ScheduledTransferTests(ApiFactory factory) : IntegrationTest
         var scheduled = await ReadTransferAsync(
             await ScheduleAsync(source.Id, destination.Id, 100m, Factory.Clock.GetUtcNow().AddMinutes(5)));
 
-        var cancel = await Client.PostAsync($"/api/transfers/{scheduled.Id}/cancel", null);
-        var cancelAgain = await Client.PostAsync($"/api/transfers/{scheduled.Id}/cancel", null);
+        var cancel = await CancelAsync(scheduled.Id, source.Id);
+        var cancelAgain = await CancelAsync(scheduled.Id, source.Id);
 
         Factory.Clock.Advance(TimeSpan.FromMinutes(6));
         await RunScheduledPipelineAsync(scheduled.Id);

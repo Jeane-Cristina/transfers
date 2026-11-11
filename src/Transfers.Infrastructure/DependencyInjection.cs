@@ -1,8 +1,10 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Transfers.Application.Abstractions;
+using Transfers.Infrastructure.Identity;
 using Transfers.Infrastructure.Messaging;
 using Transfers.Infrastructure.Outbox;
 using Transfers.Infrastructure.Persistence;
@@ -27,6 +29,10 @@ public static class DependencyInjection
         services.AddScoped<ITransferRepository, TransferRepository>();
         services.AddScoped<IUnitOfWork, EfUnitOfWork>();
         services.AddScoped<ICommandOutbox, EfCommandOutbox>();
+        services.AddScoped<IPasswordHasher<AccountCredential>, PasswordHasher<AccountCredential>>();
+        services.AddScoped<IAuthenticationService, PasswordAuthenticationService>();
+        services.Configure<NewAccountOptions>(configuration.GetSection("NewAccounts"));
+        services.AddScoped<IAccountRegistrationService, AccountRegistrationService>();
 
         return services;
     }
